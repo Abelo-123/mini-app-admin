@@ -3,63 +3,44 @@
 
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0a0f" />
-  <meta name="description" content="Paxyo SMM — Social Media Marketing Panel. Buy followers, likes, views and more." />
-  <title>Paxyo SMM</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0a0a12" />
+  <meta name="description" content="Paxyo Admin — Management Dashboard" />
+  <title>Paxyo Admin</title>
 
-  <!-- Preconnect to Google Fonts for faster font loading -->
+  <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <!-- Load Inter font with display=swap (non-blocking) -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-    media="print" onload="this.media='all'" />
-  <noscript>
-    <link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
-  </noscript>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
 
-  <!-- DNS prefetch for API domain -->
-  <link rel="dns-prefetch" href="https://paxyo.com" />
-  <link rel="preconnect" href="https://paxyo.com" />
-
-  <!-- Inline critical CSS: instant dark background + loading indicator -->
+  <!-- Inline critical CSS -->
   <style>
-    html,
-    body {
+    html, body {
       margin: 0;
       padding: 0;
-      background: #0a0a0f;
-      overflow: hidden;
+      background: #0a0a12;
+      font-family: 'Inter', sans-serif;
+      color: #e4e4e7;
     }
-
     #root {
       width: 100%;
-      height: 100vh;
-      height: 100dvh;
+      min-height: 100vh;
     }
-
     #root:empty {
       display: flex;
       align-items: center;
       justify-content: center;
     }
-
     #root:empty::after {
       content: '';
-      width: 24px;
-      height: 24px;
-      border: 2.5px solid #222;
-      border-top-color: #3498db;
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(99,102,241,0.2);
+      border-top-color: #6366f1;
       border-radius: 50%;
-      animation: _s .6s linear infinite;
+      animation: _spin .7s linear infinite;
     }
-
-    @keyframes _s {
-      to {
-        transform: rotate(360deg);
-      }
-    }
+    @keyframes _spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 
@@ -67,7 +48,6 @@
   <noscript>You need to enable JavaScript to run this app.</noscript>
   <div id="root"></div>
   <script src="/src/index.tsx" type="module"></script>
-  <script src="https://js.chapa.co/v1/inline.js" defer></script>
 </body>
 
 </html>
