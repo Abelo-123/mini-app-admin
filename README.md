@@ -1,4 +1,4 @@
-# Telegram Mini Apps React Template
+# mini-app-admin
 
 This template demonstrates how developers can implement a single-page
 application on the Telegram Mini Apps platform using the following technologies

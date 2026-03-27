@@ -235,6 +235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                 id: authResponse.user.id,
                                 first_name: authResponse.user.first_name,
                                 last_name: authResponse.user.last_name,
+                                username: authResponse.user.username,
                                 display_name: [authResponse.user.first_name, authResponse.user.last_name].filter(Boolean).join(' '),
                                 photo_url: authResponse.user.photo_url || '',
                                 balance: authResponse.user.balance,
