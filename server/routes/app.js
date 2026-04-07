@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import pool from '../config/database.js';
 import { getTelegramUserId, getTelegramUser } from '../lib/auth.js';
+import { notifyNewUser } from '../lib/notify.js';
 
 const router = Router();
 
@@ -14,7 +15,8 @@ router.get('/settings', async (req, res) => {
             holidayName: '',
             maintenanceMode: false,
             userCanOrder: true,
-            marqueeText: 'Welcome to Paxyo SMM!'
+            marqueeText: 'Welcome to Paxyo SMM!',
+            topServicesIds: []
         };
         
         rows.forEach(row => {
@@ -24,21 +26,34 @@ router.get('/settings', async (req, res) => {
             if (row.setting_key === 'maintenance_mode') settings.maintenanceMode = (row.setting_value === '1' || row.setting_value === 'true');
             if (row.setting_key === 'user_can_order') settings.userCanOrder = (row.setting_value === '1' || row.setting_value === 'true');
             if (row.setting_key === 'marquee_text') settings.marqueeText = row.setting_value;
+            if (row.setting_key === 'top_services_ids') {
+                settings.topServicesIds = row.setting_value
+                    ? row.setting_value.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n))
+                    : [];
+            }
         });
 
         return res.json(settings);
     } catch (err) {
         console.error(err);
-        return res.json({ rateMultiplier: 55, discountPercent: 0, holidayName: '', maintenanceMode: false, userCanOrder: true, marqueeText: '' });
+        return res.json({ rateMultiplier: 55, discountPercent: 0, holidayName: '', maintenanceMode: false, userCanOrder: true, marqueeText: '', topServicesIds: [] });
     }
 });
 
-// get_recommended
+// get_recommended - now uses top_services_ids from settings
 router.get('/recommended', async (req, res) => {
     try {
-        const [rows] = await pool.execute('SELECT service_id FROM recommended_services');
-        const ids = rows.map(r => r.service_id);
-        return res.json(ids);
+        const [rows] = await pool.execute(
+            'SELECT setting_value FROM settings WHERE setting_key = "top_services_ids"'
+        );
+        if (rows.length > 0 && rows[0].setting_value) {
+            const ids = rows[0].setting_value
+                .split(',')
+                .map(s => parseInt(s.trim(), 10))
+                .filter(n => !isNaN(n));
+            return res.json(ids);
+        }
+        return res.json([]);
     } catch (err) {
         console.error(err);
         return res.json([]);
@@ -97,6 +112,9 @@ router.post('/auth', async (req, res) => {
                 [tgId, username, firstName, lastName, photoUrl]
             );
             [users] = await pool.execute('SELECT * FROM auth WHERE tg_id = ?', [tgId]);
+            
+            // Notify new user registration
+            notifyNewUser({ uid: tgId, uuid: username || firstName });
         } else {
             await pool.execute(
                 'UPDATE auth SET username = ?, first_name = ?, last_name = ?, photo_url = ?, last_login = NOW() WHERE tg_id = ?', 

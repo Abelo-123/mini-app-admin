@@ -6,6 +6,7 @@ import { OrdersPage } from './pages/admin/OrdersPage';
 import { DepositsPage } from './pages/admin/DepositsPage';
 import { SettingsPage } from './pages/admin/SettingsPage';
 import { ServicesPage } from './pages/admin/ServicesPage';
+import { ChatPage } from './pages/admin/ChatPage';
 
 // ─── Toast System ──────────────────────────────────────────────
 type ToastType = 'success' | 'error' | 'info';
@@ -24,11 +25,12 @@ export const AdminContext = createContext<AdminContextType>({
 export const useAdmin = () => useContext(AdminContext);
 
 // ─── Page Type ─────────────────────────────────────────────────
-type Page = 'dashboard' | 'users' | 'orders' | 'deposits' | 'settings' | 'services';
+type Page = 'dashboard' | 'users' | 'orders' | 'deposits' | 'settings' | 'services' | 'chat';
 
 const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'users', label: 'Users', icon: '👥' },
+  { id: 'chat', label: 'Support Chat', icon: '💬' },
   { id: 'orders', label: 'Orders', icon: '📦' },
   { id: 'deposits', label: 'Deposits', icon: '💰' },
   { id: 'services', label: 'Services', icon: '⚡' },
@@ -38,6 +40,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
 const PAGE_TITLES: Record<Page, string> = {
   dashboard: 'Dashboard',
   users: 'User Management',
+  chat: 'Support Chat',
   orders: 'Order History',
   deposits: 'Deposit History',
   services: 'Service Rates',
@@ -136,6 +139,7 @@ export function AdminApp() {
     switch (currentPage) {
       case 'dashboard': return <DashboardPage />;
       case 'users': return <UsersPage />;
+      case 'chat': return <ChatPage />;
       case 'orders': return <OrdersPage />;
       case 'deposits': return <DepositsPage />;
       case 'services': return <ServicesPage />;

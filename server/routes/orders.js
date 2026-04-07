@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import pool from '../config/database.js';
 import { getTelegramUserId } from '../lib/auth.js';
+import { notifyNewOrder } from '../lib/notify.js';
 
 const router = Router();
 
@@ -80,7 +81,7 @@ router.post('/place', async (req, res) => {
             const providerOrderId = orderData.order;
 
             // 5. Update user balance
-            await conn.execute('UPDATE auth SET balance = balance - ? WHERE tg_id = ?', [totalCostEtb, tgId]);
+            await conn.execute('UPDATE auth SET balance = balance - ?, last_order = NOW(), total_spent = total_spent + ? WHERE tg_id = ?', [totalCostEtb, totalCostEtb, tgId]);
 
             // Get new balance
             const [newBalRows] = await conn.execute('SELECT balance FROM auth WHERE tg_id = ?', [tgId]);
@@ -103,7 +104,18 @@ router.post('/place', async (req, res) => {
             );
 
             await conn.commit();
-            return res.json({ success: true, order_id: insertRes.insertId.toString(), new_balance: parseFloat(newBalanceStr) });
+
+            // Notify admin bot
+            const orderId = insertRes.insertId.toString();
+            notifyNewOrder({
+                uid: tgId,
+                uuid: user.username || user.first_name || 'User',
+                service: serviceData.name,
+                order: orderId,
+                amount: totalCostEtb.toString()
+            });
+
+            return res.json({ success: true, order_id: orderId, new_balance: parseFloat(newBalanceStr) });
         } catch (err) {
             await conn.rollback();
             console.error('[place_order]', err);

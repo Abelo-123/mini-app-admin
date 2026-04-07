@@ -96,6 +96,8 @@ router.get('/users', async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const search = req.query.search || '';
+        const sortBy = req.query.sortBy || 'last_login';
+        const sortOrder = req.query.sortOrder || 'desc';
         const offset = (page - 1) * limit;
 
         let whereClause = '';
@@ -107,12 +109,23 @@ router.get('/users', async (req, res) => {
             params = [s, s, s, s];
         }
 
+        const validSortColumns = {
+            recent_registration: 'created_at',
+            big_balance: 'balance',
+            total_spent: 'total_spent',
+            recent_active: 'last_login',
+            last_deposit: 'last_deposit',
+            last_order: 'last_order',
+        };
+        const sortColumn = validSortColumns[sortBy] || 'last_login';
+        const orderDir = sortOrder === 'asc' ? 'ASC' : 'DESC';
+
         const [[{ total }]] = await pool.execute(
             `SELECT COUNT(*) as total FROM auth ${whereClause}`, params
         );
 
         const [users] = await pool.execute(
-            `SELECT * FROM auth ${whereClause} ORDER BY last_login DESC LIMIT ? OFFSET ?`,
+            `SELECT * FROM auth ${whereClause} ORDER BY ${sortColumn} ${orderDir} LIMIT ? OFFSET ?`,
             [...params, String(limit), String(offset)]
         );
 
@@ -159,6 +172,37 @@ router.post('/users/role', async (req, res) => {
     } catch (err) {
         console.error('[admin/users/role]', err);
         return res.status(500).json({ error: 'Failed to update role' });
+    }
+});
+
+// ─── Alerts / Messaging ─────────────────────────────────────────
+router.post('/alerts', async (req, res) => {
+    try {
+        const { target, title, message, type = 'info' } = req.body;
+
+        if (!title || !message || !target) {
+            return res.status(400).json({ error: 'target, title, and message are required' });
+        }
+
+        if (target === 'all') {
+            // Broadcast to every user
+            await pool.execute(
+                `INSERT INTO alerts (user_id, title, message, type)
+                 SELECT tg_id, ?, ?, ? FROM auth`,
+                [title, message, type]
+            );
+        } else {
+            // Send to a specific user by tg_id
+            await pool.execute(
+                'INSERT INTO alerts (user_id, title, message, type) VALUES (?, ?, ?, ?)',
+                [target, title, message, type]
+            );
+        }
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('[admin/alerts]', err);
+        return res.status(500).json({ error: 'Failed to send alert' });
     }
 });
 
@@ -262,6 +306,7 @@ router.get('/settings', async (req, res) => {
             maintenance_mode: settings.maintenance_mode || '0',
             user_can_order: settings.user_can_order || '1',
             marquee_text: settings.marquee_text || '',
+            top_services_ids: settings.top_services_ids || '',
         });
     } catch (err) {
         console.error('[admin/settings]', err);
@@ -284,6 +329,147 @@ router.post('/settings', async (req, res) => {
     } catch (err) {
         console.error('[admin/settings]', err);
         return res.status(500).json({ error: 'Failed to update setting' });
+    }
+});
+
+// ─── Service Custom Pricing ────────────────────────────────────────
+router.get('/services/custom', async (req, res) => {
+    try {
+        const [rows] = await pool.execute('SELECT * FROM service_custom ORDER BY updated_at DESC');
+        return res.json(rows);
+    } catch (err) {
+        console.error('[admin/services/custom]', err);
+        return res.status(500).json({ error: 'Failed to load custom pricing' });
+    }
+});
+
+router.post('/services/custom', async (req, res) => {
+    try {
+        const { service_id, custom_rate, profit_margin, is_enabled } = req.body;
+        if (!service_id) return res.status(400).json({ error: 'service_id is required' });
+
+        await pool.execute(
+            `INSERT INTO service_custom (service_id, custom_rate, profit_margin, is_enabled) 
+             VALUES (?, ?, ?, ?) 
+             ON DUPLICATE KEY UPDATE 
+             custom_rate = COALESCE(?, custom_rate),
+             profit_margin = COALESCE(?, profit_margin),
+             is_enabled = COALESCE(?, is_enabled)`,
+            [service_id, custom_rate, profit_margin, is_enabled, custom_rate, profit_margin, is_enabled]
+        );
+
+        await pool.execute(
+            `INSERT INTO service_custom (service_id, custom_rate, profit_margin, is_enabled) 
+             VALUES (?, ?, ?, ?) 
+             ON DUPLICATE KEY UPDATE 
+             custom_rate = COALESCE(?, custom_rate),
+             profit_margin = COALESCE(?, profit_margin),
+             is_enabled = COALESCE(?, is_enabled)`,
+            [service_id, custom_rate, profit_margin, is_enabled, custom_rate, profit_margin, is_enabled]
+        );
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('[admin/services/custom]', err);
+        return res.status(500).json({ error: 'Failed to update custom pricing' });
+    }
+});
+
+router.delete('/services/custom/:serviceId', async (req, res) => {
+    try {
+        const { serviceId } = req.params;
+        await pool.execute('DELETE FROM service_custom WHERE service_id = ?', [serviceId]);
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('[admin/services/custom]', err);
+        return res.status(500).json({ error: 'Failed to delete custom pricing' });
+    }
+});
+
+// ─── Service Activity Log ───────────────────────────────────────────
+router.get('/services/activity', async (req, res) => {
+    try {
+        const [rows] = await pool.execute(
+            `SELECT sc.*, a.username, a.first_name 
+             FROM service_custom sc 
+             LEFT JOIN auth a ON sc.updated_by = a.tg_id
+             ORDER BY sc.updated_at DESC LIMIT 20`
+        );
+        return res.json(rows);
+    } catch (err) {
+        console.error('[admin/services/activity]', err);
+        return res.status(500).json({ error: 'Failed to load activity' });
+    }
+});
+
+// ─── Disabled Services ────────────────────────────────────────────────
+router.get('/services/disabled', async (req, res) => {
+    try {
+        const [rows] = await pool.execute(
+            'SELECT * FROM service_custom WHERE is_enabled = FALSE ORDER BY updated_at DESC'
+        );
+        return res.json(rows);
+    } catch (err) {
+        console.error('[admin/services/disabled]', err);
+        return res.status(500).json({ error: 'Failed to load disabled services' });
+    }
+});
+
+    // ─── Support Chat ────────────────────────────────────────────────
+router.get('/chat/sessions', async (req, res) => {
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const [sessions] = await conn.execute(`
+            SELECT c.user_id, a.username, a.first_name, MAX(c.created_at) as last_message_at
+            FROM chat_messages c
+            LEFT JOIN auth a ON c.user_id = a.tg_id
+            GROUP BY c.user_id, a.username, a.first_name
+            ORDER BY last_message_at DESC
+        `);
+        return res.json(sessions);
+    } catch (err) {
+        console.error('[admin/chat/sessions] Error:', err.message);
+        return res.status(500).json({ error: err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+router.get('/chat/:user_id', async (req, res) => {
+    try {
+        const { user_id } = req.params;
+        const [messages] = await pool.execute(
+            'SELECT * FROM chat_messages WHERE user_id = ? ORDER BY created_at ASC',
+            [user_id]
+        );
+        return res.json(messages);
+    } catch (err) {
+        console.error('[admin/chat/messages]', err);
+        return res.status(500).json({ error: 'Failed to load messages' });
+    }
+});
+
+router.post('/chat/:user_id', async (req, res) => {
+    try {
+        const { user_id } = req.params;
+        const { message } = req.body;
+        if (!message) return res.status(400).json({ error: 'message is required' });
+
+        await pool.execute(
+            'INSERT INTO chat_messages (user_id, message, is_admin, created_at) VALUES (?, ?, 1, NOW())',
+            [user_id, message]
+        );
+
+        await pool.execute(
+            'INSERT INTO alerts (user_id, title, message, type) VALUES (?, ?, ?, ?)',
+            [user_id, 'New Message', 'You have a new message from support', 'chat']
+        );
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('[admin/chat/send]', err);
+        return res.status(500).json({ error: 'Failed to send message' });
     }
 });
 

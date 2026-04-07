@@ -21,10 +21,39 @@ async function migrate() {
             email VARCHAR(255),
             first_name VARCHAR(255),
             last_name VARCHAR(255),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_deposit DATETIME,
+            last_order DATETIME,
+            total_spent DECIMAL(10, 2) DEFAULT 0.00,
             UNIQUE KEY (tg_id)
         )`;
         await conn.execute(createAuth);
         console.log('Auth table checked/created.');
+
+        // Add new columns to auth table if they don't exist
+        try {
+            await conn.execute('ALTER TABLE auth ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP AFTER last_name');
+        } catch (e) {}
+        try {
+            await conn.execute('ALTER TABLE auth ADD COLUMN last_deposit DATETIME AFTER created_at');
+        } catch (e) {}
+        try {
+            await conn.execute('ALTER TABLE auth ADD COLUMN last_order DATETIME AFTER last_deposit');
+        } catch (e) {}
+        try {
+            await conn.execute('ALTER TABLE auth ADD COLUMN total_spent DECIMAL(10, 2) DEFAULT 0.00 AFTER last_order');
+        } catch (e) {}
+
+        // Add indexes for the new columns
+        try {
+            await conn.execute('CREATE INDEX idx_auth_last_deposit ON auth(last_deposit)');
+        } catch (e) {}
+        try {
+            await conn.execute('CREATE INDEX idx_auth_last_order ON auth(last_order)');
+        } catch (e) {}
+        try {
+            await conn.execute('CREATE INDEX idx_auth_created_at ON auth(created_at)');
+        } catch (e) {}
 
         // 2. Ensure `deposits` table exists and is optimized
         const createDeposits = `
@@ -148,6 +177,27 @@ async function migrate() {
             service_id INT NOT NULL UNIQUE
         )`;
         await conn.execute(createRec);
+
+        // 9. Ensure `service_custom` table for custom pricing
+        const createServiceCustom = `
+        CREATE TABLE IF NOT EXISTS service_custom (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            service_id INT NOT NULL UNIQUE,
+            custom_rate DECIMAL(10, 2),
+            profit_margin DECIMAL(5, 2) DEFAULT 0,
+            is_enabled BOOLEAN DEFAULT TRUE,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )`;
+        await conn.execute(createServiceCustom);
+
+        try {
+            await conn.execute('ALTER TABLE service_custom ADD COLUMN updated_by VARCHAR(255) AFTER updated_at');
+        } catch (e) {}
+
+        try {
+            await conn.execute('CREATE INDEX idx_service_custom_id ON service_custom(service_id)');
+            console.log('Added INDEX to service_custom(service_id)');
+        } catch (e) {}
 
         conn.release();
         console.log('--- Migration & Optimization Complete! ---');

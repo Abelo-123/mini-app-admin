@@ -95,6 +95,11 @@ router.get('/', async (req, res) => {
             }
         }
 
+        // Ensure always returns array (never empty, return default)
+        if (!result || !Array.isArray(result) || result.length === 0) {
+            result = ['Instagram Followers', 'Instagram Likes', 'TikTok Followers', 'YouTube Views', 'Facebook Followers', 'Twitter Followers'];
+        }
+
         return res.json({
             success: true,
             categories: result,

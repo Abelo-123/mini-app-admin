@@ -17,12 +17,15 @@ import appRouter from './routes/app.js';
 import chatRouter from './routes/chat.js';
 import getCategoriesRouter from './routes/getCategories.js';
 import adminRouter from './routes/admin.js';
+import testNotifyRouter from './routes/testNotify.js';
 
 const app = express();
 
 // cPanel/Passenger priority: Always use process.env.PORT if provided.
 // On cPanel, this is usually a path to a socket, not a number.
-const PORT = process.env.PORT || 3001;
+// Use 3002 in development, 3001 in production
+const isProduction = process.env.NODE_ENV === 'production';
+const PORT = process.env.PORT || (isProduction ? 3001 : 3002);
 
 // Middleware
 app.use(cors());
@@ -49,12 +52,23 @@ app.use('/api/app', appRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/categories', getCategoriesRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/test', testNotifyRouter);
 
 // Start server
-// In cPanel/Passenger, we MUST NOT specify a port number if we want it to handle routing.
-// However, the function requires one or it defaults to a random one.
-// The trick is to listen on the variable provided by Passenger.
-app.listen(PORT, () => {
-    console.log(`🚀 Paxyo Backend running`);
-    // Note: In cPanel, 'PORT' is often a path to a Unix Socket, not a number.
-});
+const startServer = (port) => {
+    const server = app.listen(port, () => {
+        console.log(`🚀 Paxyo Backend running on port ${port}`);
+    });
+
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.log(`Port ${port} is in use, trying port ${port + 1}...`);
+            startServer(port + 1);
+        } else {
+            console.error('Server error:', err);
+        }
+    });
+};
+
+const startPort = typeof PORT === 'number' ? PORT : parseInt(PORT, 10) || (isProduction ? 3001 : 3002);
+startServer(startPort);

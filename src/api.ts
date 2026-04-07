@@ -110,6 +110,8 @@ const CACHE_DURATION = 5 * 60 * 1000;
 const SETTINGS_CACHE_DURATION = 15 * 60 * 1000;
 
 export async function getServices(useCache = true): Promise<Service[]> {
+    const filterDisabled = (arr: any[]) => arr.filter((s: any) => s.is_enabled !== false && s.is_enabled !== 0);
+    
     if (useCache) {
         try {
             const cached = localStorage.getItem(SERVICES_CACHE_KEY);
@@ -119,7 +121,7 @@ export async function getServices(useCache = true): Promise<Service[]> {
                 if (age < CACHE_DURATION) {
                     try {
                         const parsed = JSON.parse(cached);
-                        if (Array.isArray(parsed)) return parsed;
+                        if (Array.isArray(parsed)) return filterDisabled(parsed);
                     } catch(e) {}
                 }
             }
@@ -128,7 +130,7 @@ export async function getServices(useCache = true): Promise<Service[]> {
 
     try {
         const data = await nodeApiFetch<any>('/services');
-        const validData = Array.isArray(data) ? data : [];
+        const validData = Array.isArray(data) ? filterDisabled(data) : [];
         if (validData.length > 0) {
             localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(validData));
             localStorage.setItem(SERVICES_TIMESTAMP_KEY, Date.now().toString());
@@ -139,7 +141,7 @@ export async function getServices(useCache = true): Promise<Service[]> {
         if (cached) {
             try {
                 const parsed = JSON.parse(cached);
-                if (Array.isArray(parsed)) return parsed;
+                if (Array.isArray(parsed)) return filterDisabled(parsed);
             } catch(e) {}
         }
         return [];
@@ -149,7 +151,7 @@ export async function getServices(useCache = true): Promise<Service[]> {
 export async function refreshServices(): Promise<Service[]> {
     try {
         const data = await nodeApiFetch<any>('/services?refresh=1');
-        const validData = Array.isArray(data) ? data : [];
+        const validData = Array.isArray(data) ? data.filter((s: any) => s.is_enabled !== false && s.is_enabled !== 0) : [];
         if (validData.length > 0) {
             localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(validData));
             localStorage.setItem(SERVICES_TIMESTAMP_KEY, Date.now().toString());
@@ -167,7 +169,7 @@ export async function getServicesByCategory(category?: string, ids?: number[]): 
     
     const qs = params.toString() ? `?${params.toString()}` : '';
     const data = await nodeApiFetch<any>(`/services${qs}`);
-    return Array.isArray(data) ? data : [];
+    return Array.isArray(data) ? data.filter((s: any) => s.is_enabled !== false && s.is_enabled !== 0) : [];
 }
 export interface CategoriesResponse {
     success: boolean;
@@ -278,6 +280,7 @@ export interface AppSettings {
     maintenanceMode: boolean;
     userCanOrder: boolean;
     marqueeText: string;
+    topServicesIds: number[];
 }
 
 export async function getSettings(useCache = true): Promise<AppSettings> {
@@ -307,6 +310,7 @@ export async function getSettings(useCache = true): Promise<AppSettings> {
             maintenanceMode: false,
             userCanOrder: true,
             marqueeText: 'Welcome to Paxyo SMM!',
+            topServicesIds: [],
         };
     }
 }

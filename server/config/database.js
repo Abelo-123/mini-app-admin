@@ -4,6 +4,11 @@
 import mysql from 'mysql2/promise';
 import 'dotenv/config';
 
+// Debug: log env vars
+console.log('[admin-db] DB_USER:', process.env.DB_USER);
+console.log('[admin-db] DB_PASS:', process.env.DB_PASS ? '***' : '(empty)');
+console.log('[admin-db] DB_NAME:', process.env.DB_NAME);
+
 // When running ON the cPanel server, host is always localhost
 const pool = mysql.createPool({
     host: 'localhost', 
@@ -19,8 +24,24 @@ const pool = mysql.createPool({
 
 // TEST CONNECTION AND LOG ERRORS
 pool.getConnection()
-    .then(conn => {
+    .then(async conn => {
         console.log('✅ DB Connected');
+        try {
+            // Recreate chat_messages table with correct schema
+            await conn.execute(`DROP TABLE IF EXISTS chat_messages`);
+            await conn.execute(`
+                CREATE TABLE chat_messages (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id VARCHAR(50) NOT NULL,
+                    message TEXT NOT NULL,
+                    is_admin TINYINT(1) DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ chat_messages table ready');
+        } catch (e) {
+            console.error('❌ Failed to create chat_messages table', e);
+        }
         conn.release();
     })
     .catch(err => {

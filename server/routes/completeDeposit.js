@@ -18,8 +18,7 @@
  */
 import { Router } from 'express';
 import pool from '../config/database.js';
-import Chapa from '../lib/chapa.js';
-import { getTelegramUserId } from '../lib/auth.js';
+import { notifyDeposit } from '../lib/notify.js';
 
 const router = Router();
 
@@ -110,7 +109,7 @@ router.post('/', async (req, res) => {
 
             // Credit user balance
             await conn.execute(
-                'UPDATE auth SET balance = balance + ? WHERE tg_id = ?',
+                'UPDATE auth SET balance = balance + ?, last_deposit = NOW() WHERE tg_id = ?',
                 [verifiedAmount, deposit.user_id]
             );
 
@@ -130,6 +129,13 @@ router.post('/', async (req, res) => {
 
             await conn.commit();
             conn.release();
+
+            // Notify admin bot
+            notifyDeposit({
+                uid: deposit.user_id,
+                amount: verifiedAmount.toString(),
+                uuid: 'Chapa'
+            });
 
             return res.json({
                 success: true,

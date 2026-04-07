@@ -20,7 +20,8 @@ export function SearchModal({ onSelect, onClose }: Props) {
         let cancelled = false;
         setLoading(true);
 
-        getServices(true)
+        // Force refresh to get latest data without cached disabled services
+        getServices(false)
             .then(data => {
                 if (!cancelled) {
                     setRawServices(Array.isArray(data) ? data : []);

@@ -16,6 +16,7 @@
 import { Router } from 'express';
 import pool from '../config/database.js';
 import Chapa from '../lib/chapa.js';
+import { notifyDeposit } from '../lib/notify.js';
 
 const router = Router();
 
@@ -69,7 +70,7 @@ async function handleCallback(req, res) {
 
             // Credit balance
             await conn.execute(
-                'UPDATE auth SET balance = balance + ? WHERE tg_id = ?',
+                'UPDATE auth SET balance = balance + ?, last_deposit = NOW() WHERE tg_id = ?',
                 [verifiedAmount, deposit.user_id]
             );
 
@@ -89,6 +90,13 @@ async function handleCallback(req, res) {
 
             await conn.commit();
             conn.release();
+
+            // Notify admin bot
+            notifyDeposit({
+                uid: deposit.user_id,
+                amount: verifiedAmount.toString(),
+                uuid: 'Chapa'
+            });
 
             return res.json({ success: true, message: 'Deposit completed successfully' });
         } else {

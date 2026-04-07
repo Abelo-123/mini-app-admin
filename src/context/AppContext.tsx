@@ -74,7 +74,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const [user, setUser] = useState<UserProfile | null>(null);
     const [services, setServices] = useState<Service[]>([]);
-    const [recommendedIds, _setRecommendedIds] = useState<number[]>([]);
+    const [recommendedIds, setRecommendedIds] = useState<number[]>([]);
     const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -93,6 +93,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         maintenanceMode: false,
         userCanOrder: true,
         marqueeText: 'Welcome to Paxyo SMM!',
+        topServicesIds: [] as number[],
     });
 
     const refreshServices = useCallback(async () => {
@@ -159,7 +160,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             // Load settings (independent of services)
             try {
-                const settingsData = await api.getSettings(true);
+                // Clear cached settings to ensure fresh data
+                localStorage.removeItem('paxyo_settings_cache');
+                localStorage.removeItem('paxyo_settings_timestamp');
+                
+                const settingsData = await api.getSettings(false);
+                console.log('Settings loaded:', settingsData);
                 _setSettings({
                     rateMultiplier: settingsData.rateMultiplier || 1,
                     discountPercent: settingsData.discountPercent || 0,
@@ -167,7 +173,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     maintenanceMode: settingsData.maintenanceMode || false,
                     userCanOrder: settingsData.userCanOrder !== false,
                     marqueeText: settingsData.marqueeText || 'Welcome to Paxyo SMM!',
+                    topServicesIds: settingsData.topServicesIds || [],
                 });
+                // Set recommended IDs from settings
+                setRecommendedIds(settingsData.topServicesIds || []);
             } catch (err) {
                 console.error('Failed to load settings:', err);
             }

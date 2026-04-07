@@ -29,8 +29,30 @@ const TabFallback = () => (
 );
 
 function AppContent() {
-  const { activeTab, setActiveTab, isLoading } = useApp();
+  const { activeTab, setActiveTab, isLoading, maintenanceMode, userCanOrder } = useApp();
+  console.log('AppContent - maintenanceMode:', maintenanceMode, 'userCanOrder:', userCanOrder);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Show maintenance screen
+  if (maintenanceMode === true) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        padding: 40, 
+        textAlign: 'center',
+        background: 'var(--bg-primary)',
+        color: 'var(--text-primary)'
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔧</div>
+        <h2 style={{ marginBottom: 8 }}>Maintenance Mode</h2>
+        <p style={{ color: 'var(--text-secondary)' }}>We are currently performing maintenance. Please check back soon.</p>
+      </div>
+    );
+  }
 
   // Telegram scroll fix: prevent swipe-to-close
   useEffect(() => {

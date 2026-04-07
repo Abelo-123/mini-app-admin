@@ -101,6 +101,15 @@ export function SettingsPage() {
           saving={saving === 'marquee_text'}
           onSave={(val) => save('marquee_text', val)}
         />
+
+        <SettingRow
+          label="Top Services IDs"
+          description="Comma-separated service IDs for the 'Top Services' section (e.g., 102, 10, 50, 45). These will be shown in the exact order specified."
+          type="text"
+          value={settings.top_services_ids}
+          saving={saving === 'top_services_ids'}
+          onSave={(val) => save('top_services_ids', val)}
+        />
       </div>
     </div>
   );
