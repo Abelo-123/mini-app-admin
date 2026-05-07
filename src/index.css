@@ -55,7 +55,8 @@ html, body {
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  /* Removed overflow-x: hidden to prevent scroll lock on mobile */
+  -webkit-overflow-scrolling: touch;
 }
 
 a {
@@ -136,6 +137,7 @@ a {
   flex-direction: column;
   gap: 4px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sidebar__section-label {
@@ -250,7 +252,8 @@ a {
   justify-content: center;
   background: var(--bg-primary);
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
+  padding: 40px 20px;
 }
 
 .login-page__bg {
@@ -699,6 +702,7 @@ a {
   max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: var(--shadow-lg);
   animation: slideUp 0.3s ease;
 }
@@ -929,6 +933,10 @@ a {
   }
   .data-table-wrapper {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .data-table {
+    min-width: 800px; /* Force horizontal scroll on mobile */
   }
 }
 
